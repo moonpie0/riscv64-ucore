@@ -1,5 +1,6 @@
 #include <default_pmm.h>
 #include <best_fit_pmm.h>
+#include <buddy_system.h>
 #include <defs.h>
 #include <error.h>
 #include <memlayout.h>
@@ -34,7 +35,7 @@ static void check_alloc_page(void);
 
 // init_pmm_manager - initialize a pmm_manager instance
 static void init_pmm_manager(void) {
-    pmm_manager = &default_fit_pmm_manager; //pmm_manager的指针赋值成 &default_pmm_manager
+    pmm_manager = &best_fit_pmm_manager; //pmm_manager的指针赋值成 &default_pmm_manager
     cprintf("memory management: %s\n", pmm_manager->name);
     pmm_manager->init();
 }
@@ -113,7 +114,8 @@ static void page_init(void) {
     mem_end = ROUNDDOWN(mem_end, PGSIZE);
     if (freemem < mem_end) {
         //初 始 化 我 们 可 以 自 由 使 用 的 物 理 内 存
-        init_memmap(pa2page(mem_begin), (mem_end - mem_begin) / PGSIZE); //static void init_memmap(struct Page *base, size_t n)
+        //init_memmap(pa2page(mem_begin), (mem_end - mem_begin) / PGSIZE); //static void init_memmap(struct Page *base, size_t n)
+        init_memmap(pa2page(mem_begin), 16); 
     }
 }
 
