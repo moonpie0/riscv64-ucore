@@ -13,22 +13,27 @@
 // only needs to implement the methods in pmm_manager class, then
 // XXX_pmm_manager can be used
 // by ucore to manage the total physical memory space.
+
+//pmm_manager 提供了各种接口：分配页面，释放页面，查看当前空闲页面数。
+//为那些接口只是作为函数指针，作为 pmm_manager 的一部分，我们需要把那些函数指针变量赋值为真正的函数名称。
 struct pmm_manager {
     const char *name;  // XXX_pmm_manager's name
-    void (*init)(
+    void (*init)( //初始化内部数据结构(如空闲页面链表)
         void);  // initialize internal description&management data structure
                 // (free block list, number of free block) of XXX_pmm_manager
-    void (*init_memmap)(
+    void (*init_memmap)( //知道了可用的物理页面数目后，进行更详细的初始化
         struct Page *base,
         size_t n);  // setup description&management data structcure according to
                     // the initial free physical memory space
-    struct Page *(*alloc_pages)(
+    struct Page *(*alloc_pages)(//// 分 配 至 少n个 物 理 页 面, 根 据 分 配 算 法 可 能 返 回 不 同 的 结 果
         size_t n);  // allocate >=n pages, depend on the allocation algorithm
     void (*free_pages)(struct Page *base, size_t n);  // free >=n pages with
                                                       // "base" addr of Page
                                                       // descriptor
                                                       // structures(memlayout.h)
+    //返回空闲物理页面数
     size_t (*nr_free_pages)(void);  // return the number of free pages
+    //测试正确性
     void (*check)(void);            // check the correctness of XXX_pmm_manager
 };
 

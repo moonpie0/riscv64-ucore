@@ -65,15 +65,15 @@ default_init(void) {
 }
 
 static void
-default_init_memmap(struct Page *base, size_t n) {
-    assert(n > 0);
-    struct Page *p = base;
-    for (; p != base + n; p ++) {
-        assert(PageReserved(p));
-        p->flags = p->property = 0;
-        set_page_ref(p, 0);
+default_init_memmap(struct Page *base, size_t n) { //初始化内存映射
+    assert(n > 0); //断言，确保n>0
+    struct Page *p = base;  
+    for (; p != base + n; p ++) {  //初始化
+        assert(PageReserved(p)); //确保页面是保留的，即可给内核使用的
+        p->flags = p->property = 0; //置为0
+        set_page_ref(p, 0); //引用计数置为0
     }
-    base->property = n;
+    base->property = n;   //空闲块数量设为n
     SetPageProperty(base);
     nr_free += n;
     if (list_empty(&free_list)) {

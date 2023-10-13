@@ -34,14 +34,14 @@ static void check_alloc_page(void);
 
 // init_pmm_manager - initialize a pmm_manager instance
 static void init_pmm_manager(void) {
-    pmm_manager = &best_fit_pmm_manager;
+    pmm_manager = &default_fit_pmm_manager; //pmm_manager的指针赋值成 &default_pmm_manager
     cprintf("memory management: %s\n", pmm_manager->name);
     pmm_manager->init();
 }
 
 // init_memmap - call pmm->init_memmap to build Page struct for free memory
 static void init_memmap(struct Page *base, size_t n) {
-    pmm_manager->init_memmap(base, n);
+    pmm_manager->init_memmap(base, n); //我们调用的 init_memmap() 实际上又调用了 pmm_manager 的一个”成员函数
 }
 
 // alloc_pages - call pmm->alloc_pages to allocate a continuous n*PAGESIZE
@@ -81,9 +81,9 @@ size_t nr_free_pages(void) {
 }
 
 static void page_init(void) {
-    va_pa_offset = PHYSICAL_MEMORY_OFFSET;
+    va_pa_offset = PHYSICAL_MEMORY_OFFSET; //0xFFFFFFFF4000000
 
-    uint64_t mem_begin = KERNEL_BEGIN_PADDR;
+    uint64_t mem_begin = KERNEL_BEGIN_PADDR; //0x8020000
     uint64_t mem_size = PHYSICAL_MEMORY_END - KERNEL_BEGIN_PADDR;
     uint64_t mem_end = PHYSICAL_MEMORY_END; //硬编码取代 sbi_query_memory()接口
 
@@ -99,38 +99,39 @@ static void page_init(void) {
 
     extern char end[];
 
-    npage = maxpa / PGSIZE;
+    npage = maxpa / PGSIZE; //页数目
     //kernel在end[]结束, pages是剩下的页的开始
-    pages = (struct Page *)ROUNDUP((void *)end, PGSIZE);
-
+    pages = (struct Page *)ROUNDUP((void *)end, PGSIZE);//把pages指 针 指 向 内 核 所 占 内 存 空 间 结 束 后 的 第 一 页
+//一 开 始 把 所 有 页 面 都 设 置 为 保 留 给 内 核 使 用 的 ， 之 后 再 设 置 哪 些 页 面 可 以 分 配 给 其 他 程 序
     for (size_t i = 0; i < npage - nbase; i++) {
         SetPageReserved(pages + i);
     }
 
     uintptr_t freemem = PADDR((uintptr_t)pages + sizeof(struct Page) * (npage - nbase));
-
+    //按 照 页 面 大 小PGSIZE进 行 对 齐, ROUNDUP, ROUNDDOWN是 在libs/defs.h定 义 的
     mem_begin = ROUNDUP(freemem, PGSIZE);
     mem_end = ROUNDDOWN(mem_end, PGSIZE);
     if (freemem < mem_end) {
-        init_memmap(pa2page(mem_begin), (mem_end - mem_begin) / PGSIZE);
+        //初 始 化 我 们 可 以 自 由 使 用 的 物 理 内 存
+        init_memmap(pa2page(mem_begin), (mem_end - mem_begin) / PGSIZE); //static void init_memmap(struct Page *base, size_t n)
     }
 }
 
 /* pmm_init - initialize the physical memory management */
-void pmm_init(void) {
+void pmm_init(void) { //初始化物理内存管理
     // We need to alloc/free the physical memory (granularity is 4KB or other size).
     // So a framework of physical memory manager (struct pmm_manager)is defined in pmm.h
     // First we should init a physical memory manager(pmm) based on the framework.
     // Then pmm can alloc/free the physical memory.
     // Now the first_fit/best_fit/worst_fit/buddy_system pmm are available.
-    init_pmm_manager();
+    init_pmm_manager(); //pmm_manager的指针赋值成 &default_pmm_manager
 
     // detect physical memory space, reserve already used memory,
     // then use pmm->init_memmap to create free page list
     page_init();
 
     // use pmm->check to verify the correctness of the alloc/free function in a pmm
-    check_alloc_page();
+    check_alloc_page(); //对物理内存分配功能的测试
 
     extern char boot_page_table_sv39[];
     satp_virtual = (pte_t*)boot_page_table_sv39;
