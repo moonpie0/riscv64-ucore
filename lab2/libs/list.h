@@ -90,11 +90,11 @@ list_add_after(list_entry_t *listelm, list_entry_t *elm) {
  * */
 static inline void
 list_del(list_entry_t *listelm) {
-    __list_del(listelm->prev, listelm->next);
+    __(listelm->prev, listelm->next);
 }
 
 /* *
- * list_del_init - deletes entry from list and reinitialize it.
+ * _init - deletes entry from list and reinitialize it.
  * @listelm:    the element to delete from the list.
  *
  * Note: list_empty() on @listelm returns true after this.

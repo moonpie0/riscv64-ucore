@@ -104,13 +104,13 @@ void interrupt_handler(struct trapframe *tf) {
     intptr_t cause = (tf->cause << 1) >> 1;
     switch (cause) {
         case IRQ_U_SOFT:
-            cprintf("User software interrupt\n");
+            //cprintf("User software interrupt\n");
             break;
         case IRQ_S_SOFT:
-            cprintf("Supervisor software interrupt\n");
+            //cprintf("Supervisor software interrupt\n");
             break;
         case IRQ_H_SOFT:
-            cprintf("Hypervisor software interrupt\n");
+            //cprintf("Hypervisor software interrupt\n");
             break;
         case IRQ_M_SOFT:
             cprintf("Machine software interrupt\n");
@@ -131,25 +131,25 @@ void interrupt_handler(struct trapframe *tf) {
             }
             break;
         case IRQ_H_TIMER:
-            cprintf("Hypervisor software interrupt\n");
+            //cprintf("Hypervisor software interrupt\n");
             break;
         case IRQ_M_TIMER:
-            cprintf("Machine software interrupt\n");
+           // cprintf("Machine software interrupt\n");
             break;
         case IRQ_U_EXT:
-            cprintf("User software interrupt\n");
+            //cprintf("User software interrupt\n");
             break;
         case IRQ_S_EXT:
-            cprintf("Supervisor external interrupt\n");
+            //cprintf("Supervisor external interrupt\n");
             break;
         case IRQ_H_EXT:
-            cprintf("Hypervisor software interrupt\n");
+            //cprintf("Hypervisor software interrupt\n");
             break;
         case IRQ_M_EXT:
-            cprintf("Machine software interrupt\n");
+            //cprintf("Machine software interrupt\n");
             break;
         default:
-            print_trapframe(tf);
+            //print_trapframe(tf);
             break;
     }
 }
@@ -181,7 +181,7 @@ void exception_handler(struct trapframe *tf) {
         case CAUSE_MACHINE_ECALL:
             break;
         default:
-            print_trapframe(tf);
+            //print_trapframe(tf);
             break;
     }
 }

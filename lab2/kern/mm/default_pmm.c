@@ -74,15 +74,15 @@ default_init_memmap(struct Page *base, size_t n) { //初始化内存映射
         set_page_ref(p, 0); //引用计数置为0
     }
     base->property = n;   //空闲块数量设为n
-    SetPageProperty(base);
+    SetPageProperty(base); //将base标识为页面的页首
     nr_free += n;
-    if (list_empty(&free_list)) {
+    if (list_empty(&free_list)) { //为空直接加
         list_add(&free_list, &(base->page_link));
     } else {
-        list_entry_t* le = &free_list;
+        list_entry_t* le = &free_list; //非空就插在合适位置
         while ((le = list_next(le)) != &free_list) {
             struct Page* page = le2page(le, page_link);
-            if (base < page) {
+            if (base < page) { //地址在前面就插入
                 list_add_before(le, &(base->page_link));
                 break;
             } else if (list_next(le) == &free_list) {
@@ -100,24 +100,24 @@ default_alloc_pages(size_t n) {
     }
     struct Page *page = NULL;
     list_entry_t *le = &free_list;
-    while ((le = list_next(le)) != &free_list) {
-        struct Page *p = le2page(le, page_link);
-        if (p->property >= n) {
-            page = p;
+    while ((le = list_next(le)) != &free_list) { //一个一个往下找
+        struct Page *p = le2page(le, page_link); 
+        if (p->property >= n) { //页面大小符合要求
+            page = p; //找到的页面就为p
             break;
         }
     }
     if (page != NULL) {
-        list_entry_t* prev = list_prev(&(page->page_link));
-        list_del(&(page->page_link));
-        if (page->property > n) {
-            struct Page *p = page + n;
-            p->property = page->property - n;
-            SetPageProperty(p);
-            list_add(prev, &(p->page_link));
+        list_entry_t* prev = list_prev(&(page->page_link)); 
+        list_del(&(page->page_link)); //从空闲页面链表中删除
+        if (page->property > n) { //如果有多余的页
+            struct Page *p = page + n;  //定位到多余的页的首地址
+            p->property = page->property - n; //调整页数，以便后续继续使用
+            SetPageProperty(p); //设置为页首
+            list_add(prev, &(p->page_link)); //加入到空闲链表中
         }
-        nr_free -= n;
-        ClearPageProperty(page);
+        nr_free -= n; //调整空闲页数
+        ClearPageProperty(page); //由于被占用，因此页可用大小清空
     }
     return page;
 }
@@ -128,16 +128,16 @@ default_free_pages(struct Page *base, size_t n) {
     struct Page *p = base;
     for (; p != base + n; p ++) {
         assert(!PageReserved(p) && !PageProperty(p));
-        p->flags = 0;
-        set_page_ref(p, 0);
+        p->flags = 0; //清空状态位
+        set_page_ref(p, 0); //将引用次数置零
     }
-    base->property = n;
-    SetPageProperty(base);
-    nr_free += n;
+    base->property = n; //恢复页大小
+    SetPageProperty(base); //设置为页首
+    nr_free += n; //更新空闲页数
 
-    if (list_empty(&free_list)) {
+    if (list_empty(&free_list)) { //把空闲页放回空闲页链表中
         list_add(&free_list, &(base->page_link));
-    } else {
+    } else { //找到合适的位置
         list_entry_t* le = &free_list;
         while ((le = list_next(le)) != &free_list) {
             struct Page* page = le2page(le, page_link);
@@ -150,22 +150,22 @@ default_free_pages(struct Page *base, size_t n) {
         }
     }
 
-    list_entry_t* le = list_prev(&(base->page_link));
+    list_entry_t* le = list_prev(&(base->page_link)); //base的上一页
     if (le != &free_list) {
         p = le2page(le, page_link);
-        if (p + p->property == base) {
-            p->property += base->property;
-            ClearPageProperty(base);
-            list_del(&(base->page_link));
-            base = p;
+        if (p + p->property == base) { //如果加进去的空闲页与上一页的地址连续
+            p->property += base->property; //则合并为一页
+            ClearPageProperty(base); //把base清空
+            list_del(&(base->page_link)); //从空闲链表中删掉
+            base = p; //更新base结构体
         }
     }
 
-    le = list_next(&(base->page_link));
+    le = list_next(&(base->page_link)); //base的下一页
     if (le != &free_list) {
         p = le2page(le, page_link);
-        if (base + base->property == p) {
-            base->property += p->property;
+        if (base + base->property == p) { //如果与下一页的地址连续
+            base->property += p->property; //则合并为一页
             ClearPageProperty(p);
             list_del(&(p->page_link));
         }

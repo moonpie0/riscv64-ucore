@@ -55,14 +55,14 @@ void buddy2_new( int size ) { //初始化二叉树上的节点
   unsigned node_size;
   blockNum=0; //设置已分配块数为0
   int i;
-  if (size < 1 || !IS_POWER_OF_2(size))
+  if (size < 1 || !IS_POWER_OF_2(size)) //分配不合理
     return;
 
-  tree[0].size = size;
+  tree[0].size = size; //根节点的size即为管理内存的总数
   node_size = size * 2;
-  for (i = 0; i < 2 * size - 1; ++i) {
-    if (IS_POWER_OF_2(i+1))
-      node_size /= 2;
+  for (i = 0; i < 2 * size - 1; ++i) { //节点总数为i<2*size
+    if (IS_POWER_OF_2(i+1))  
+      node_size /= 2; //节点管理内存数减半
     tree[i].longest[0] = node_size; //记录对应内存块大小
   }
   return ;
@@ -84,11 +84,11 @@ buddy_init_memmap(struct Page *base, size_t n) { //初始化内存映射
         p->flags = 0;
         p->property = 1; //每页大小为1
         set_page_ref(p, 0); //引用计数置为0
-        SetPageProperty(p);
+        SetPageProperty(p); //将p设置为页首，即每个地址都是一个页
         list_add(&free_list, &(p->page_link)); //加在前面
     }
     nr_free += n;
-    buddy2_new(MIN_BLOCK(n));
+    buddy2_new(MIN_BLOCK(n)); //初始化二叉树
 }
 
 int buddy2_alloc( int size) {
@@ -128,8 +128,7 @@ int buddy2_alloc( int size) {
         	//cprintf("LEFT_LEAF(index)%d=",LEFT_LEAF(index));
 		index=LEFT_LEAF(index);
 		//cprintf("index=%d\n",index);
-        }
-            
+        }         
     }
     else
     {
@@ -145,7 +144,6 @@ int buddy2_alloc( int size) {
   tree[index].longest[0] = 0; //说明该节点已被使用，无法再被分配
   offset = (index + 1) * node_size - tree[0].size;
   while (index) { //回溯更新父节点的使用情况
-
   //因为小块内存被占用，大块就不能分配了，因此取左右子树较大值
     index = PARENT(index);
      // cprintf("index=%d\n",index);
@@ -288,7 +286,6 @@ buddy_check(void) {
       print_tree();
     A=alloc_pages(3);
     print_tree();
-    B=alloc_pages(500);
     B=alloc_pages(1);
     print_tree();
     C=alloc_pages(5);
