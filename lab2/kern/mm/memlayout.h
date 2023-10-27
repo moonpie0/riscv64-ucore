@@ -35,7 +35,7 @@ typedef uintptr_t pde_t;
 struct Page {
     int ref;   //页帧引用次数                     // page frame's reference counter
     uint64_t flags;   //状态位              // array of flags that describe the status of the page frame
-    unsigned int property;    //空闲块数量      // the num of free block, used in first fit pm manager
+    unsigned int property;    //空闲页大小      // the num of free block, used in first fit pm manager
     list_entry_t page_link;         // free list link
 };
 

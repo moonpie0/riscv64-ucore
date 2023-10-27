@@ -14,7 +14,7 @@
  *           24 bits            7 bits    1 bit
  * */
 
-#define MAX_SWAP_OFFSET_LIMIT                   (1 << 24)
+#define MAX_SWAP_OFFSET_LIMIT                   (1 << 24) //偏移量的最大值
 
 extern size_t max_swap_offset;
 
@@ -24,7 +24,8 @@ extern size_t max_swap_offset;
  * */
 #define swap_offset(entry) ({                                       \
                size_t __offset = (entry >> 8);                        \
-               if (!(__offset > 0 && __offset < max_swap_offset)) {    \
+               //边界检查
+               if (!(__offset > 0 && __offset < max_swap_offset)) {    \ 
                     panic("invalid swap_entry_t = %08x.\n", entry);    \
                }                                                    \
                __offset;                                            \

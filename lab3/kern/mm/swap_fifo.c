@@ -25,7 +25,7 @@
  *              le2page (in memlayout.h), (in future labs: le2vma (in vmm.h), le2proc (in proc.h),etc.
  */
 
-list_entry_t pra_list_head;
+list_entry_t pra_list_head;//记录所有可换出页面
 /*
  * (2) _fifo_init_mm: init pra_list_head and let  mm->sm_priv point to the addr of pra_list_head.
  *              Now, From the memory control struct mm_struct, we can access FIFO PRA
@@ -43,7 +43,7 @@ _fifo_init_mm(struct mm_struct *mm)
  */
 static int
 _fifo_map_swappable(struct mm_struct *mm, uintptr_t addr, struct Page *page, int swap_in)
-{
+{//将一个页面映射到可换出列表中，将该页面插入到链表的尾部
     list_entry_t *head=(list_entry_t*) mm->sm_priv;
     list_entry_t *entry=&(page->pra_page_link);
  
@@ -60,7 +60,7 @@ _fifo_map_swappable(struct mm_struct *mm, uintptr_t addr, struct Page *page, int
  */
 static int
 _fifo_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tick)
-{
+{//选择一个页面进行换出，选择头部的页面进行换出，并将其从列表中删除
      list_entry_t *head=(list_entry_t*) mm->sm_priv;
          assert(head != NULL);
      assert(in_tick==0);
@@ -78,7 +78,7 @@ _fifo_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tick
 }
 
 static int
-_fifo_check_swap(void) {
+_fifo_check_swap(void) { //用于检查页面置换是否正常工作
     cprintf("write Virt Page c in fifo_check_swap\n");
     *(unsigned char *)0x3000 = 0x0c;
     assert(pgfault_num==4);
@@ -121,7 +121,7 @@ _fifo_check_swap(void) {
 
 
 static int
-_fifo_init(void)
+_fifo_init(void) //没有实际作用
 {
     return 0;
 }
@@ -137,7 +137,7 @@ _fifo_tick_event(struct mm_struct *mm)
 { return 0; }
 
 
-struct swap_manager swap_manager_fifo =
+struct swap_manager swap_manager_fifo = 
 {
      .name            = "fifo swap manager",
      .init            = &_fifo_init,

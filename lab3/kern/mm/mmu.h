@@ -35,28 +35,28 @@
 // +---------+----+---+--------+--------+---------------+
 
 // page directory index
-#define PDX1(la) ((((uintptr_t)(la)) >> PDX1SHIFT) & 0x1FF)
+#define PDX1(la) ((((uintptr_t)(la)) >> PDX1SHIFT) & 0x1FF) //从线性地址la中提取出页目录索引
 #define PDX0(la) ((((uintptr_t)(la)) >> PDX0SHIFT) & 0x1FF)
 
 // page table index
-#define PTX(la) ((((uintptr_t)(la)) >> PTXSHIFT) & 0x1FF)
+#define PTX(la) ((((uintptr_t)(la)) >> PTXSHIFT) & 0x1FF) //页表索引
 
-// page number field of address
-#define PPN(la) (((uintptr_t)(la)) >> PTXSHIFT)
+// page number field of address 
+#define PPN(la) (((uintptr_t)(la)) >> PTXSHIFT) //页号
 
 // offset in page
-#define PGOFF(la) (((uintptr_t)(la)) & 0xFFF)
+#define PGOFF(la) (((uintptr_t)(la)) & 0xFFF) //页内偏移量
 
-// construct linear address from indexes and offset
+// construct linear address from indexes and offset //构造出页内线性地址(用页目录索引、页表索引、页内偏移量)
 #define PGADDR(d1, d0, t, o) ((uintptr_t)((d1) << PDX1SHIFT | (d0) << PDX0SHIFT | (t) << PTXSHIFT | (o)))
 
-// address in page table or page directory entry
+// address in page table or page directory entry //物理地址(用页表项和目录项)
 #define PTE_ADDR(pte)   (((uintptr_t)(pte) & ~0x3FF) << (PTXSHIFT - PTE_PPN_SHIFT))
 #define PDE_ADDR(pde)   PTE_ADDR(pde)
 
 /* page directory and page table constants */
-#define NPDEENTRY       512                    // page directory entries per page directory
-#define NPTEENTRY       512                    // page table entries per page table
+#define NPDEENTRY       512    //页目录项数                // page directory entries per page directory
+#define NPTEENTRY       512    //每个页表项数                // page table entries per page table
 
 #define PGSIZE          4096                    // bytes mapped by a page
 #define PGSHIFT         12                      // log2(PGSIZE)

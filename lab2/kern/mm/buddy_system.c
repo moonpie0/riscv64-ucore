@@ -264,25 +264,21 @@ void print_tree()
 
 static void
 buddy_check(void) {
-  
     struct Page  *A, *B, *C , *D;
     A = B =C = D =NULL;
-
     assert((A = alloc_page()) != NULL);
     assert((B = alloc_page()) != NULL);
     assert((C = alloc_page()) != NULL);
     assert((D = alloc_page()) != NULL);
-
     assert( A != B && B!= C && C!=D && D!=A);
     assert(page_ref(A) == 0 && page_ref(B) == 0 && page_ref(C) == 0 && page_ref(D) == 0);
-    //free page就是free pages(A,1)
+    //free page就是free pages(A,1) (函数扩展)
     free_page(A);
     free_page(B);
     free_page(C);
-    free_page(D);
+    free_page(D); 
     
-    
-    cprintf("*******************************Check begin***************************\n");
+    cprintf("------------------------------checking-------------------------------\n");
       print_tree();
     A=alloc_pages(3);
     print_tree();
@@ -300,7 +296,7 @@ buddy_check(void) {
     print_tree();
     free_page(C);
     print_tree();
-    cprintf("********************************Check End****************************\n");
+    cprintf("------------------------------check succeeded---------------------------\n");
 }
 
 

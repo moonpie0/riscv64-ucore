@@ -328,14 +328,17 @@ volatile unsigned int pgfault_num=0;
  *            or supervisor mode (0) at the time of the exception.
  */
 int
-do_pgfault(struct mm_struct *mm, uint_t error_code, uintptr_t addr) {
+do_pgfault(struct mm_struct *mm, uint_t error_code, uintptr_t addr) { 
+    //页访问异常的处理函数，参数：当前进程的mm结构，错误号，错误地址
     int ret = -E_INVAL;
     //try to find a vma which include addr
+    //从mm关联的vma链表块中查询，是否存在当前addr线性地址匹配的vma块
     struct vma_struct *vma = find_vma(mm, addr);
 
-    pgfault_num++;
+    pgfault_num++; //全局页异常处理数+1
     //If the addr is in the range of a mm's vma?
-    if (vma == NULL || vma->vm_start > addr) {
+    if (vma == NULL || vma->vm_start > addr) { //判断找到的地址是否合法,
+        //如果没有匹配到vma
         cprintf("not valid addr %x, and  can not find it in vma\n", addr);
         goto failed;
     }
@@ -346,15 +349,15 @@ do_pgfault(struct mm_struct *mm, uint_t error_code, uintptr_t addr) {
      * THEN
      *    continue process
      */
-    uint32_t perm = PTE_U;
+    uint32_t perm = PTE_U; //构造需要设置的缺页页表项的perm权限
     if (vma->vm_flags & VM_WRITE) {
         perm |= (PTE_R | PTE_W);
     }
-    addr = ROUNDDOWN(addr, PGSIZE);
+    addr = ROUNDDOWN(addr, PGSIZE); //构造需要设置的缺页页表项的线性地址(按照PGSIZE向下取整，进行页面对齐)
 
     ret = -E_NO_MEM;
 
-    pte_t *ptep=NULL;
+    pte_t *ptep=NULL; //用于映射的页表项的指针
     /*
     * Maybe you want help comment, BELOW comments can help you finish the code
     *
@@ -373,17 +376,18 @@ do_pgfault(struct mm_struct *mm, uint_t error_code, uintptr_t addr) {
     *
     */
 
-
+   /// 第三个参数=1 表示如果对应页表项不存在，则需要新创建这个页表项（这个是Lab2里面设置的）
     ptep = get_pte(mm->pgdir, addr, 1);  //(1) try to find a pte, if pte's
                                          //PT(Page Table) isn't existed, then
                                          //create a PT.
-    if (*ptep == 0) {
+    if (*ptep == 0) {//如果对应页表项的内容每一位都全为0，说明之前并不存在，需要设置对应的数据，进行线性地址与物理地址的映射
         if (pgdir_alloc_page(mm->pgdir, addr, perm) == NULL) {
+            //// 令pgdir指向的页表中，la线性地址对应的二级页表项与一个新分配的物理页Page进行虚实地址的映射
             cprintf("pgdir_alloc_page in do_pgfault failed\n");
             goto failed;
         }
-    } else {
-        /*LAB3 EXERCISE 3: YOUR CODE
+    } else { //如果不是全为0，说明可能是之前被交换到了swap磁盘中
+        /*LAB3 EXERCISE 3: 李颖 2110939
         * 请你根据以下信息提示，补充函数
         * 现在我们认为pte是一个交换条目，那我们应该从磁盘加载数据并放到带有phy addr的页面，
         * 并将phy addr与逻辑addr映射，触发交换管理器记录该页面的访问情况
@@ -395,7 +399,7 @@ do_pgfault(struct mm_struct *mm, uint_t error_code, uintptr_t addr) {
         *    page_insert ： 建立一个Page的phy addr与线性addr la的映射
         *    swap_map_swappable ： 设置页面可交换
         */
-        if (swap_init_ok) {
+        if (swap_init_ok) { //如果开启了swap磁盘虚拟内存交换机制
             struct Page *page = NULL;
             // 你要编写的内容在这里，请基于上文说明以及下文的英文注释完成代码编写
             //(1）According to the mm AND addr, try
@@ -406,13 +410,24 @@ do_pgfault(struct mm_struct *mm, uint_t error_code, uintptr_t addr) {
             //map of phy addr <--->
             //logical addr
             //(3) make the page swappable.
+            /*-------------------------------------------------------------------*/
+            if ((ret = swap_in(mm, addr, &page)) != 0) {
+                // swap_in返回值不为0，表示换入失败
+                cprintf("swap_in in do_pgfault failed\n");
+                goto failed;
+            }    
+            // 将交换进来的page页与mm->pgdir页表中对应addr的二级页表项建立映射关系(perm标识这个二级页表的各个权限位)
+            page_insert(mm->pgdir, page, addr, perm);
+            // 当前page是为可交换的，将其加入全局虚拟内存交换管理器的管理
+            swap_map_swappable(mm, addr, page, 1);
+            /*-------------------------------------------------------------------*/
             page->pra_vaddr = addr;
         } else {
             cprintf("no swap_init_ok but ptep is %x, failed\n", *ptep);
             goto failed;
         }
    }
-
+    //返回0说明缺页异常处理成功
    ret = 0;
 failed:
     return ret;

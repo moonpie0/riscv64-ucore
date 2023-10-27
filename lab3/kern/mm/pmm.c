@@ -325,9 +325,9 @@ static inline void page_remove_pte(pde_t *pgdir, uintptr_t la, pte_t *ptep) {
 // page_remove - free an Page which is related linear address la and has an
 // validated pte
 void page_remove(pde_t *pgdir, uintptr_t la) {
-    pte_t *ptep = get_pte(pgdir, la, 0);
+    pte_t *ptep = get_pte(pgdir, la, 0); //找到页表所在位置
     if (ptep != NULL) {
-        page_remove_pte(pgdir, la, ptep);
+        page_remove_pte(pgdir, la, ptep); //删除这个页表项的映射
     }
 }
 
@@ -339,22 +339,23 @@ void page_remove(pde_t *pgdir, uintptr_t la) {
 //  perm:  the permission of this Page which is setted in related pte
 // return value: always 0
 // note: PT is changed, so the TLB need to be invalidate
+// pgdir页表基址，page物理页面 la虚拟地址
 int page_insert(pde_t *pgdir, struct Page *page, uintptr_t la, uint32_t perm) {
-    pte_t *ptep = get_pte(pgdir, la, 1);
+    pte_t *ptep = get_pte(pgdir, la, 1); //找到对应页表项的位置，找不到会分配内存
     if (ptep == NULL) {
         return -E_NO_MEM;
     }
-    page_ref_inc(page);
-    if (*ptep & PTE_V) {
-        struct Page *p = pte2page(*ptep);
-        if (p == page) {
+    page_ref_inc(page); //指向这个物理页面的虚拟地址增加了一个
+    if (*ptep & PTE_V) { //如果原先存在映射
+        struct Page *p = pte2page(*ptep); 
+        if (p == page) { //如果这个映射原先就有
             page_ref_dec(page);
-        } else {
+        } else { //如果这个虚拟地址映射到其他物理页面，则先删除映射
             page_remove_pte(pgdir, la, ptep);
         }
     }
-    *ptep = pte_create(page2ppn(page), PTE_V | perm);
-    tlb_invalidate(pgdir, la);
+    *ptep = pte_create(page2ppn(page), PTE_V | perm); //构造页表项
+    tlb_invalidate(pgdir, la); //页表改变后刷新TLB
     return 0;
 }
 
@@ -400,12 +401,13 @@ static void check_pgdir(void) {
     nr_free_store=nr_free_pages();
 
     assert(npage <= KERNTOP / PGSIZE);
+    //boot_pgdir页表的虚拟地址
     assert(boot_pgdir != NULL && (uint32_t)PGOFF(boot_pgdir) == 0);
-    assert(get_page(boot_pgdir, 0x0, NULL) == NULL);
+    assert(get_page(boot_pgdir, 0x0, NULL) == NULL);//尝 试 找 到 虚 拟 内 存0x0对 应 的 页 ， 现 在 当 然 是 没 有 的 ， 返 回NULL
 
     struct Page *p1, *p2;
-    p1 = alloc_page();
-    assert(page_insert(boot_pgdir, p1, 0x0, 0) == 0);
+    p1 = alloc_page(); //拿一个物理页面
+    assert(page_insert(boot_pgdir, p1, 0x0, 0) == 0); //通过多级页表映射到0x0
     pte_t *ptep;
     assert((ptep = get_pte(boot_pgdir, 0x0, 0)) != NULL);
     assert(pte2page(*ptep) == p1);
@@ -414,6 +416,7 @@ static void check_pgdir(void) {
     ptep = (pte_t *)KADDR(PDE_ADDR(boot_pgdir[0]));
     ptep = (pte_t *)KADDR(PDE_ADDR(ptep[0])) + 1;
     assert(get_pte(boot_pgdir, PGSIZE, 0) == ptep);
+    ///get_pte查 找 某 个 虚 拟 地 址 对 应 的 页 表 项 ， 如 果 不 存 在 这 个 页 表 项 ， 会 为 它 分 配 各 级 的 页 表
 
     p2 = alloc_page();
     assert(page_insert(boot_pgdir, p2, PGSIZE, PTE_U | PTE_W) == 0);

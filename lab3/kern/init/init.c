@@ -32,10 +32,10 @@ kern_init(void) {
 
     idt_init();                 // init interrupt descriptor table
 
-    vmm_init();                 // init virtual memory management
+    vmm_init();  //虚拟化初始内存管理并测试               // init virtual memory management
 
     ide_init();                 // init ide devices
-    swap_init();                // init swap
+    swap_init();  //初始化页面置换机制              // init swap
 
     clock_init();               // init clock interrupt
     // intr_enable();              // enable irq interrupt
