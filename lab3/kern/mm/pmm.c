@@ -244,16 +244,16 @@ pte_t *get_pte(pde_t *pgdir, uintptr_t la, bool create) {
      *   PTE_U           0x004                   // page table/directory entry
      * flags bit : User can access
      */
-    pde_t *pdep1 = &pgdir[PDX1(la)];
-    if (!(*pdep1 & PTE_V)) {
+    pde_t *pdep1 = &pgdir[PDX1(la)]; //找到第一个页目录表的位置
+    if (!(*pdep1 & PTE_V)) { //判断是否有效
         struct Page *page;
-        if (!create || (page = alloc_page()) == NULL) {
+        if (!create || (page = alloc_page()) == NULL) { //没有的话就创建
             return NULL;
         }
-        set_page_ref(page, 1);
-        uintptr_t pa = page2pa(page);
-        memset(KADDR(pa), 0, PGSIZE);
-        *pdep1 = pte_create(page2ppn(page), PTE_U | PTE_V);
+        set_page_ref(page, 1); //引用
+        uintptr_t pa = page2pa(page); //page转成物理地址
+        memset(KADDR(pa), 0, PGSIZE); //把对应的空间置零
+        *pdep1 = pte_create(page2ppn(page), PTE_U | PTE_V); //创建一个页目录
     }
     pde_t *pdep0 = &((pde_t *)KADDR(PDE_ADDR(*pdep1)))[PDX0(la)];
 //    pde_t *pdep0 = &((pde_t *)(PDE_ADDR(*pdep1)))[PDX0(la)];

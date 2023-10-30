@@ -350,8 +350,8 @@ do_pgfault(struct mm_struct *mm, uint_t error_code, uintptr_t addr) {
      *    continue process
      */
     uint32_t perm = PTE_U; //构造需要设置的缺页页表项的perm权限
-    if (vma->vm_flags & VM_WRITE) {
-        perm |= (PTE_R | PTE_W);
+    if (vma->vm_flags & VM_WRITE) { //如果可读
+        perm |= (PTE_R | PTE_W); //设置一下权限：可读且用户可获取
     }
     addr = ROUNDDOWN(addr, PGSIZE); //构造需要设置的缺页页表项的线性地址(按照PGSIZE向下取整，进行页面对齐)
 
@@ -380,7 +380,7 @@ do_pgfault(struct mm_struct *mm, uint_t error_code, uintptr_t addr) {
     ptep = get_pte(mm->pgdir, addr, 1);  //(1) try to find a pte, if pte's
                                          //PT(Page Table) isn't existed, then
                                          //create a PT.
-    if (*ptep == 0) {//如果对应页表项的内容每一位都全为0，说明之前并不存在，需要设置对应的数据，进行线性地址与物理地址的映射
+    if (*ptep == 0) {//如果页表项不存在，需要设置对应的数据，进行线性地址与物理地址的映射
         if (pgdir_alloc_page(mm->pgdir, addr, perm) == NULL) {
             //// 令pgdir指向的页表中，la线性地址对应的二级页表项与一个新分配的物理页Page进行虚实地址的映射
             cprintf("pgdir_alloc_page in do_pgfault failed\n");
@@ -418,7 +418,7 @@ do_pgfault(struct mm_struct *mm, uint_t error_code, uintptr_t addr) {
             }    
             // 将交换进来的page页与mm->pgdir页表中对应addr的二级页表项建立映射关系(perm标识这个二级页表的各个权限位)
             page_insert(mm->pgdir, page, addr, perm);
-            // 当前page是为可交换的，将其加入全局虚拟内存交换管理器的管理
+            // 标记这个页面时将来可以换出的
             swap_map_swappable(mm, addr, page, 1);
             /*-------------------------------------------------------------------*/
             page->pra_vaddr = addr;
