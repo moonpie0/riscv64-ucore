@@ -55,7 +55,7 @@ _lru_map_swappable(struct mm_struct *mm, uintptr_t addr, struct Page *page, int 
 
     curr_ptr=list_next(head);
     struct Page *ptr;
-    while(curr_ptr!=head->prev) //如果链表中已有该页面？？？
+    while(curr_ptr!=head->prev) //如果链表中已有该页面
     {
         ptr = le2page(curr_ptr, pra_page_link);
         cprintf("curr_ptr %p\n", ptr);

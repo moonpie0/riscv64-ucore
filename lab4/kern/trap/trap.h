@@ -39,10 +39,15 @@ struct pushregs {
 };
 
 struct trapframe {
-    struct pushregs gpr;
+    //嵌套的结构体，用于保存一组通用寄存器的值
+    struct pushregs gpr; 
+    //保存CPU状态寄存器的值
     uintptr_t status;
+    //发生中断时程序计数器PC的值
     uintptr_t epc;
+    //保存发生地址相关异常时的虚拟地址值
     uintptr_t badvaddr;
+    //发生中断或异常的原因码
     uintptr_t cause;
 };
 

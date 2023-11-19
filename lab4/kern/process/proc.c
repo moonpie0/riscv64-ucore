@@ -18,13 +18,16 @@ introduction:
   ucore implements a simple process/thread mechanism. process contains the independent memory sapce, at least one threads
 for execution, the kernel data(for management), processor state (for context switch), files(in lab6), etc. ucore needs to
 manage all these details efficiently. In ucore, a thread is just a special kind of process(share process's memory).
+
+这段代码是一个简化的Linux进程/线程机制的实现。它包含了一些关于进程状态、进程状态转换、
+进程关系和进程相关系统调用的说明。同时，代码中也包含了一些宏定义和全局变量的声明。
 ------------------------------
 process state       :     meaning               -- reason
     PROC_UNINIT     :   uninitialized           -- alloc_proc
     PROC_SLEEPING   :   sleeping                -- try_free_pages, do_wait, do_sleep
     PROC_RUNNABLE   :   runnable(maybe running) -- proc_init, wakeup_proc, 
     PROC_ZOMBIE     :   almost dead             -- do_exit
-
+定义一些进程状态
 -----------------------------
 process state changing:
                                             
@@ -38,13 +41,14 @@ PROC_UNINIT -- proc_init/wakeup_proc --> PROC_RUNNABLE -- try_free_pages/do_wait
                                            +                                                                  + 
                                            -----------------------wakeup_proc----------------------------------
 -----------------------------
-process relations
+process relations 进程之间的关系
 parent:           proc->parent  (proc is children)
 children:         proc->cptr    (proc is parent)
 older sibling:    proc->optr    (proc is younger sibling)
 younger sibling:  proc->yptr    (proc is older sibling)
 -----------------------------
 related syscall for process:
+与进程相关的系统调用
 SYS_exit        : process exit,                           -->do_exit
 SYS_fork        : create child process, dup mm            -->do_fork-->wakeup_proc
 SYS_wait        : wait process                            -->do_wait
@@ -59,15 +63,17 @@ SYS_getpid      : get the process's pid
 */
 
 // the process set's list
+// 进程集合链表
 list_entry_t proc_list;
 
 #define HASH_SHIFT          10
 #define HASH_LIST_SIZE      (1 << HASH_SHIFT)
 #define pid_hashfn(x)       (hash32(x, HASH_SHIFT))
 
+//进程ID的哈希表
 // has list for process set based on pid
 static list_entry_t hash_list[HASH_LIST_SIZE];
-
+//特殊进程的指针
 // idle proc
 struct proc_struct *idleproc = NULL;
 // init proc
@@ -79,14 +85,16 @@ static int nr_process = 0;
 
 void kernel_thread_entry(void);
 void forkrets(struct trapframe *tf);
+//首先把当前寄存器的值送到原线程的 context 中保存，再将新线程的 context 赋予各寄存器。
 void switch_to(struct context *from, struct context *to);
 
 // alloc_proc - alloc a proc_struct and init all fields of proc_struct
 static struct proc_struct *
 alloc_proc(void) {
+    //分配一个proc_struct结构体的内存
     struct proc_struct *proc = kmalloc(sizeof(struct proc_struct));
     if (proc != NULL) {
-    //LAB4:EXERCISE1 YOUR CODE
+    //LAB4:EXERCISE1 李颖 2110939
     /*
      * below fields in proc_struct need to be initialized
      *       enum proc_state state;                      // Process state
@@ -102,10 +110,33 @@ alloc_proc(void) {
      *       uint32_t flags;                             // Process flag
      *       char name[PROC_NAME_LEN + 1];               // Process name
      */
-
-
+        //进程状态，未初始化
+        proc->state = PROC_UNINIT;
+        //进程ID 
+        proc->pid = -1;
+        //线程运行总数，默认0
+        proc->runs = 0;
+        //内核栈
+        proc->kstack = 0;
+        //是否需要重新调度以释放CPU，初值0（false，表示不需要）
+        proc->need_resched = 0; 
+        //父进程控制块指针
+        proc->parent = NULL;
+        //用户进程虚拟内存管理单元指针，由于系统进程没有虚存，其值为NULL
+        proc->mm = NULL;
+        //上下文
+        memset(&(proc->context), 0, sizeof(struct context));
+        //当前中断的trapframe
+        proc->tf = NULL;
+        //页目录表基地址，初始化为初值为ucore启动时建立好的内核虚拟空间的页目录表首地址boot_cr3
+        proc->cr3 = boot_cr3;
+        //进程标志
+        proc->flags = 0;
+        //进程名数组
+        memset(proc->name, 0, PROC_NAME_LEN);
     }
     return proc;
+    //返回指向初始化后的proc_struct结构体的指针proc
 }
 
 // set_proc_name - set the name of proc
@@ -123,12 +154,18 @@ get_proc_name(struct proc_struct *proc) {
     return memcpy(name, proc->name, PROC_NAME_LEN);
 }
 
+//获取该线程ID，查找一个可用的PID
+//这段代码的主要作用是在给定的 PID 范围内查找一个可用的 PID，并返回该 PID。
+//如果 last_pid 的值超过了 MAX_PID，则重置为 1；
+// 如果 last_pid 的值与某个进程的 PID 相同，则递增 last_pid 直到找到一个可用的 PID。
 // get_pid - alloc a unique pid for process
 static int
 get_pid(void) {
     static_assert(MAX_PID > MAX_PROCESS);
+    //进程控制块
     struct proc_struct *proc;
     list_entry_t *list = &proc_list, *le;
+    //定义下一个安全的PID值，和上一个使用的PID值
     static int next_safe = MAX_PID, last_pid = MAX_PID;
     if (++ last_pid >= MAX_PID) {
         last_pid = 1;
@@ -158,12 +195,17 @@ get_pid(void) {
     return last_pid;
 }
 
+//进程切换函数
+//总体来说，这段代码的作用是切换当前运行的进程为传入的进程 proc。
+//在切换之前，它保存了当前的中断状态，更新了全局的 current 变量，
+//加载了新进程的内核栈和页目录，并进行了进程上下文的切换。
 // proc_run - make process "proc" running on cpu
 // NOTE: before call switch_to, should load  base addr of "proc"'s new PDT
 void
 proc_run(struct proc_struct *proc) {
+    //检查要切换的进程是否与当前正在运行的进程相同，如果相同则不需要切换。
     if (proc != current) {
-        // LAB4:EXERCISE3 YOUR CODE
+        // LAB4:EXERCISE3 李颖 2110939
         /*
         * Some Useful MACROs, Functions and DEFINEs, you can use them in below implementation.
         * MACROs or Functions:
@@ -172,7 +214,27 @@ proc_run(struct proc_struct *proc) {
         *   lcr3():                   Modify the value of CR3 register
         *   switch_to():              Context switching between two processes
         */
-       
+       //用于保存中断状态
+       bool intr_flag;
+       //指向当前进程和即将运行的进程
+        struct proc_struct *prev = current, *next = proc;
+        // 将当前中断状态保存到intr_flag中
+        //禁用中断
+        local_intr_save(intr_flag);
+        {
+            //将当前进程变更为proc
+            current = proc;
+            //加载新进程的内核栈指针
+            //esp0 寄存器指向内核栈的栈顶。
+            // 设置任务状态段tss中的特权级0下的esp0指针为next内核线程的内核栈的栈顶
+            //load_esp0(next->kstack + KSTACKSIZE);
+            //切换页表，以便使用新进程的地址空间
+            lcr3(next->cr3);
+            //进行进程上下文的切换，将prev进程的上下文切换到next进程的上下文
+            switch_to(&(prev->context), &(next->context));
+        }
+        //允许中断
+        local_intr_restore(intr_flag);
     }
 }
 
@@ -273,7 +335,7 @@ do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf) {
         goto fork_out;
     }
     ret = -E_NO_MEM;
-    //LAB4:EXERCISE2 YOUR CODE
+    //LAB4:EXERCISE2 李颖 2110939
     /*
      * Some Useful MACROs, Functions and DEFINEs, you can use them in below implementation.
      * MACROs or Functions:
@@ -298,8 +360,30 @@ do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf) {
     //    5. insert proc_struct into hash_list && proc_list
     //    6. call wakeup_proc to make the new child process RUNNABLE
     //    7. set ret vaule using child proc's pid
-
-    
+    //尝试分配内存，失败就退出
+    if((proc = alloc_proc()) == NULL)goto fork_out;
+    //把此进程的父进程设置为current
+    // proc->parent = current;
+    //尝试分配内核栈
+    if(setup_kstack(proc)==-E_NO_MEM)goto bad_fork_cleanup_proc;
+    //尝试复制父进程内存
+    if(copy_mm(clone_flags,proc)!= 0)goto bad_fork_cleanup_kstack;
+    //复制中断帧和上下文
+    copy_thread(proc,stack,tf);
+    bool flag;
+    //屏蔽中断
+    local_intr_save(flag);
+    proc->pid=get_pid();//获取PID
+    hash_proc(proc);//建立hash映射
+    //list_add_after(&proc_list,&(proc->list_link));//添加进链表
+    /*用list_add_before或者list_add也完全ok*/
+     list_add(hash_list + pid_hashfn(pid), &(proc->hash_link));
+    list_add(&proc_list, &(proc->list_link));
+    nr_process++;//进程数++
+    local_intr_restore(flag);//恢复中断
+    wakeup_proc(proc);//唤醒进程
+    //return proc->pid;//返回PID
+    ret=proc->pid;
 
 fork_out:
     return ret;

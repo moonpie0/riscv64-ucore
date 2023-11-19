@@ -16,10 +16,10 @@ enum proc_state {
 };
 
 struct context {
-    uintptr_t ra;
-    uintptr_t sp;
-    uintptr_t s0;
-    uintptr_t s1;
+    uintptr_t ra; //返回地址，以便函数执行完后能正确返回到调用者处
+    uintptr_t sp; //栈指针
+    uintptr_t s0; //s0-s11:通用寄存器
+    uintptr_t s1; //存储进程在执行时的临时变量和函数参数信息
     uintptr_t s2;
     uintptr_t s3;
     uintptr_t s4;
@@ -38,6 +38,7 @@ struct context {
 
 extern list_entry_t proc_list;
 
+//进程结构体
 struct proc_struct {
     enum proc_state state;                      // Process state
     int pid;                                    // Process ID

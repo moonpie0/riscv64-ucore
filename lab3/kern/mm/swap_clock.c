@@ -49,7 +49,7 @@ _clock_init_mm(struct mm_struct *mm)
      mm->sm_priv = &pra_list_head;
      //cprintf(" mm->sm_priv %x in fifo_init_mm\n",mm->sm_priv);
      
-    print_cur();
+    //print_cur();
      return 0;
 }
 
