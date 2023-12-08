@@ -322,6 +322,18 @@ copy_thread(struct proc_struct *proc, uintptr_t esp, struct trapframe *tf) {
     proc->context.sp = (uintptr_t)(proc->tf);
 }
 
+/*具体来说，该函数做了以下几件事情：
+
+proc->tf 指针被设置为指向新进程内核栈顶部，即 proc->kstack 的末尾处减去一个 trapframe 结构体大小的位置。这样做是为了在新进程的内核栈顶部放置一个 trapframe 结构体，用于保存新进程的上下文信息。
+
+将父进程的 trapframe 结构体中的内容复制到新进程的 trapframe 结构体中。这可以通过简单的赋值操作 *(proc->tf) = *tf; 来完成。
+
+将新进程的 a0 寄存器设置为 0，这是为了让子进程知道它是由 fork 创建的，因为在 fork 中，子进程的 a0 寄存器会被设置为 0。
+
+根据传入的 esp 参数，将新进程的用户态栈指针 sp 设置为传入的 esp 值，或者如果 esp 为 0，则设置为新进程的内核栈顶部。
+
+设置新进程的上下文信息 context，将返回地址 ra 设置为 forkret 函数的地址，将栈指针 sp 设置为新进程的 trapframe 结构体的地址。这样在新进程切换到用户态时，可以正确地从 forkret 函数开始执行。*/
+
 /* do_fork -     parent process for a new child process
  * @clone_flags: used to guide how to clone the child process
  * @stack:       the parent's user stack pointer. if stack==0, It means to fork a kernel thread.
