@@ -67,7 +67,7 @@ static int sys_gettime(uint64_t arg[]){
 }
 static int sys_lab6_set_priority(uint64_t arg[]){
     uint64_t priority = (uint64_t)arg[0];
-    lab6_set_priority(priority);
+    _set_priority(priority);
     return 0;
 }
 static int

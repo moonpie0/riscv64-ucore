@@ -480,7 +480,17 @@ do_pgfault(struct mm_struct *mm, uint_t error_code, uintptr_t addr) {
             }    
             page_insert(mm->pgdir, page, addr, perm);
             swap_map_swappable(mm, addr, page, 1);*/
-
+            /*-------------------------------------------------------------------*/
+            if ((ret = swap_in(mm, addr, &page)) != 0) {
+                // swap_in返回值不为0，表示换入失败
+                cprintf("swap_in in do_pgfault failed\n");
+                goto failed;
+            }    
+            // 将交换进来的page页与mm->pgdir页表中对应addr的二级页表项建立映射关系(perm标识这个二级页表的各个权限位)
+            page_insert(mm->pgdir, page, addr, perm);
+            // 标记这个页面时将来可以换出的
+            swap_map_swappable(mm, addr, page, 1);
+            /*-------------------------------------------------------------------*/
             page->pra_vaddr = addr;
         } else {
             cprintf("no swap_init_ok but ptep is %x, failed\n", *ptep);

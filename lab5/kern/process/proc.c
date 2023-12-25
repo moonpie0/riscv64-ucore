@@ -753,39 +753,50 @@ bad_mm:
 
 // do_execve - call exit_mmap(mm)&put_pgdir(mm) to reclaim memory space of current process
 //           - call load_icode to setup new memory space accroding binary prog.
+// 主要目的在于清理原来进程的内存空间，为新进程执行准备好空间和资源
 int
 do_execve(const char *name, size_t len, unsigned char *binary, size_t size) {
     struct mm_struct *mm = current->mm;
+    // 检查传入的进程名是否合法
     if (!user_mem_check(mm, (uintptr_t)name, len, 0)) {
-        return -E_INVAL;
+        return -E_INVAL; // 返回无效参数错误码
     }
+    // 若进程名长度超过最大长度，则截断为最大长度
     if (len > PROC_NAME_LEN) {
         len = PROC_NAME_LEN;
     }
 
+    // 将进程名复制到本地字符数组local_name中
     char local_name[PROC_NAME_LEN + 1];
     memset(local_name, 0, sizeof(local_name));
     memcpy(local_name, name, len);
 
+    
+// 如果当前进程具有内存管理结构体mm，则进行清理操作
     if (mm != NULL) {
         cputs("mm != NULL");
+        // 将CR3页表基址指向boot_cr3，即内核页表，切换到内核态
         lcr3(boot_cr3);
+        // 如果当前进程的内存管理结构引用计数为0，则清空相关内存管理区域和页表
         if (mm_count_dec(mm) == 0) {
-            exit_mmap(mm);
-            put_pgdir(mm);
-            mm_destroy(mm);
+            exit_mmap(mm); // 清空内存管理部分和对应页表
+            put_pgdir(mm); // 清空页表
+            mm_destroy(mm); // 清空内存
         }
-        current->mm = NULL;
+        current->mm = NULL; // 将当前进程的内存管理结构指针设为NULL，表示没有有效的内存管理结构
     }
     int ret;
+
+    // 加载新的可执行程序并建立新的内存映射关系，这里用到了我们要写的load_icode函数
     if ((ret = load_icode(binary, size)) != 0) {
-        goto execve_exit;
+        goto execve_exit; // 发生错误则跳转到execve_exit标签处进行处理
     }
+    // 给新进程设置进程名
     set_proc_name(current, local_name);
     return 0;
 
 execve_exit:
-    do_exit(ret);
+    do_exit(ret); // 执行出错，退出当前进程，并传递错误码ret
     panic("already exit: %e.\n", ret);
 }
 
